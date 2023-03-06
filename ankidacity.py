@@ -89,14 +89,15 @@ def audacity_integration_get_media(self, path):
     for fname in media:
         asource = os.path.join(MEDIA_DROP_LOCATION,fname)
         ftype = config.get("filetype","mp3")
+        ffmpeg_options = config.get("ffmpeg_options","").split(" ")
         if not ftype.startswith("."):
             ftype = "." + ftype
         #avoid undue burden on ankiweb and prevent import of wav etc.
-        if ftype not in [".opus",".mp3"]:
+        if ftype not in [".opus",".mp3",".m4a"]:
             tooltip('Unknown extension detected. Falling back to ".mp3"')
             ftype = ".mp3"
         adest = now() + ftype
-        subprocess.call([ffmpeg, '-i', asource, adest])
+        subprocess.call([ffmpeg, '-i', asource, *ffmpeg_options, adest])
         if os.path.isfile(adest):
             self.addMedia(adest,canDelete=False)
 
