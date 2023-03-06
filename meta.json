@@ -1,0 +1,1 @@
+{"name": "Send Audio Clips From Audacity To AddcardsAnkidacity fork", "mod": 1557597738, "min_point_version": 0, "max_point_version": 0, "branch_index": 0, "disabled": false, "config": {"ffmpeg_options": "-c:a libmp3lame -q:a 0", "filetype": "mp3", "milliseconds_in_filename": true}}
