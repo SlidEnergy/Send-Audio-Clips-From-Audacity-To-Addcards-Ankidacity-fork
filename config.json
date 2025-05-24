@@ -1,4 +1,7 @@
 {
-    "filetype":"opus",
-    "milliseconds_in_filename":true
+    "clear_delay_in_seconds": 0.05,
+    "ffmpeg_options" : "",
+    "filetype": "mp3",
+    "milliseconds_in_filename":true,
+    "field": "Audio"
 } 
