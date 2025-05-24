@@ -1,5 +1,5 @@
 # copyright (c): 2015 Tiago Barroso
-#                2019 ijgnd
+#                2019- ijgnd
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
@@ -16,8 +16,7 @@
 
 
 
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from aqt.qt import *
 
 import os
 import time
@@ -32,7 +31,16 @@ from aqt.utils import tooltip
 from . import install
 
 
-config = mw.addonManager.getConfig(__name__)
+def gc(arg, fail=False):
+    try:
+        out = mw.addonManager.getConfig(__name__).get(arg, fail)
+    except:
+        return fail
+    else:
+        return out
+
+
+
 addon_dir_path = os.path.join(os.path.dirname(__file__))
 READY_DROP_LOCATION = os.path.join(addon_dir_path, "ready")
 MEDIA_DROP_LOCATION = os.path.join(addon_dir_path, "media-file")
@@ -67,13 +75,14 @@ Editor.audacity_integration_listenToWatcher = audacity_integration_listenToWatch
 
 
 def now():
-    if config.get("milliseconds_in_filename",False):
+    if gc("milliseconds_in_filename"):
         return datetime.datetime.now().strftime("%Y-%m-%d__%H_%M_%S__%f")
     else:
         return time.strftime('%Y-%m-%d__%H_%M_%S', time.localtime(time.time()))
 
 
 def audacity_integration_get_media(self, path):
+    tooltip(f"Watcher triggered! Path changed: {path}")
     media = os.listdir(MEDIA_DROP_LOCATION)
     ready = os.listdir(READY_DROP_LOCATION)
     # Sort the contents by alphabetical order to ensure deterministic
@@ -88,8 +97,8 @@ def audacity_integration_get_media(self, path):
         return
     for fname in media:
         asource = os.path.join(MEDIA_DROP_LOCATION,fname)
-        ftype = config.get("filetype","mp3")
-        ffmpeg_options = config.get("ffmpeg_options","").split(" ")
+        ftype = gc("filetype", "mp3")
+        ffmpeg_options = gc("ffmpeg_options", "").split()
         if not ftype.startswith("."):
             ftype = "." + ftype
         #avoid undue burden on ankiweb and prevent import of wav etc.
@@ -97,11 +106,28 @@ def audacity_integration_get_media(self, path):
             tooltip('Unknown extension detected. Falling back to ".mp3"')
             ftype = ".mp3"
         adest = now() + ftype
-        subprocess.call([ffmpeg, '-i', asource, *ffmpeg_options, adest])
-        if os.path.isfile(adest):
-            self.addMedia(adest,canDelete=False)
+        output_path = os.path.join(MEDIA_DROP_LOCATION, adest)
+        cmd_list = [ffmpeg, '-i', asource, *ffmpeg_options, output_path]
+        #result = subprocess.call(cmd_list)
+        process = subprocess.Popen(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = process.communicate()
 
-    time.sleep(0.05)
+        print("Return code:", process.returncode)
+        print("STDOUT:", stdout.decode('utf-8'))
+        print("STDERR:", stderr.decode('utf-8'))
+
+        if os.path.isfile(output_path):
+            print(f"File successfully created: {output_path}")
+            filename = self.addMedia(output_path, canDelete=False)
+            field = gc("field", "Audio")
+            if hasattr(self, "note") and field in self.note:
+                self.note[field] += f"[sound:{os.path.basename(output_path)}]"
+                self.loadNote()
+                tooltip(f"Audio added to the {field} field")
+            else:
+                tooltip(f"{field} field not found in the note")
+
+    time.sleep(gc("clear_delay_in_seconds", 0.05))
     clear_dir(MEDIA_DROP_LOCATION)
     clear_dir(READY_DROP_LOCATION)
     self.fswatcher.addPath(READY_DROP_LOCATION)
